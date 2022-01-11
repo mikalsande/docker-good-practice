@@ -1,4 +1,4 @@
-# Docker good practices for nodejs
+# Docker good practices for python
 
 At every stage you can check the size of the container by running `make size`.
 
