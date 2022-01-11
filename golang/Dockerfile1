@@ -1,0 +1,14 @@
+# Container image we use as starting point.
+FROM golang:1.17.3-alpine3.14
+
+# Copy all files from the repo into /root
+COPY . /root
+
+# Set the working directory.
+WORKDIR /root
+
+# Build the application.
+RUN go build
+
+# Set the command that will be run when the container starts.
+CMD ["/root/example-app"]

@@ -1,0 +1,49 @@
+# Container base image.
+FROM golang:1.17.3-alpine3.14 as base
+
+#######################################
+
+# Builder image, only used to build our application,
+# will not be part of the final image.
+FROM base as builder
+
+# Copy all files from the repo into /root
+COPY . /root
+
+# Go into the /root directory and build the application.
+RUN cd /root && go build
+
+#######################################
+
+# Application image that will be part of the final image.
+FROM base
+
+# Install dumb-init that we can use a minimal init system
+# that ensures that all signals are properly propagated.
+RUN apk add --no-cache dumb-init
+
+## Create new unprivileged user.
+##  -u 1001             set the user id (UID) and group id (GID) of the new user
+##  -h /app             sets home directory of the user
+##  -s /usr/bin/nologin sets the user shell
+##  -D                  do not set a password for the user
+##  app                 sets the username of the new user
+RUN adduser -u 1001 -h /app -s /usr/sbin/nologin -D app
+
+## Run the container as an unprivileged UID:GID
+USER 1001:1001
+
+# Copy the application over from the builder image.
+COPY --from=builder /root/example-app /app/example-app
+
+# Set the working directory.
+WORKDIR /app
+
+# Set the command that will be run when the container starts.
+CMD ["/app/example-app"]
+
+# Set dumb-init as entrypoint to make sure that it is the first
+# process started inside the container. The entrypoint command 
+# will invoke the command given in CMD which will start the 
+# actual application.
+ENTRYPOINT ["/usr/bin/dumb-init"]
