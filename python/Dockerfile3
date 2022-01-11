@@ -1,9 +1,9 @@
 # Container image we use as starting point.
-FROM node:lts-alpine
+FROM python:3.8
 
 # Install dumb-init that we can use a minimal init system
 # that ensures that all signals are properly propagated.
-RUN apk add --no-cache dumb-init
+RUN apt-get update -y && apt-get install -y dumb-init
 
 ## Create new unprivileged user.
 ##  -u 1001             set the user id (UID) and group id (GID) of the new user
@@ -13,9 +13,6 @@ RUN apk add --no-cache dumb-init
 ##  app                 sets the username of the new user
 RUN adduser -u 1001 -h /app -s /usr/sbin/nologin -D app
 
-## Run the container as an unprivileged UID:GID
-USER 1001:1001
-
 # Copy all files from the repo into /app
 COPY . /app
 
@@ -23,10 +20,13 @@ COPY . /app
 WORKDIR /app
 
 # Build the application.
-RUN npm install
+RUN pip install -r requirements.txt
+
+# Run the container as an unprivileged UID:GID
+USER 1001:1001
 
 # Set the command that will be run when the container starts.
-CMD ["node", "/app/index.js"]
+CMD [ "python", "app.py" ]
 
 # Set dumb-init as entrypoint to make sure that it is the first
 # process started inside the container. The entrypoint command 

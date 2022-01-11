@@ -1,5 +1,5 @@
 # Container base image.
-FROM node:lts-alpine as base
+FROM python:3.8 as base
 
 #######################################
 
@@ -7,14 +7,25 @@ FROM node:lts-alpine as base
 # will not be part of the final image.
 FROM base as builder
 
+# Install python virtual environment package, we do not need to 
+# remove temporary files because this container is only used
+# for build.
+RUN apt-get update -y && apt-get install -y python3-venv
+
 # Create a clean directory to build in.
 RUN mkdir /build
 
-# Copy only package.json from the repo into /build
-COPY package.json /build
+# Copy only requirements.txt from the repo into /build
+COPY requirements.txt /build
+
+# Create a python virtual environment.
+RUN python -m venv /opt/venv
+
+# Add the virtual environment to the PATH
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Go into the /build directory and build the application.
-RUN cd /build && npm install
+RUN cd /build && pip install -r requirements.txt
 
 #######################################
 
@@ -23,7 +34,7 @@ FROM base
 
 # Install dumb-init that we can use a minimal init system
 # that ensures that all signals are properly propagated.
-RUN apk add --no-cache dumb-init
+RUN apt-get update -y && apt-get install -y dumb-init && rm -rf /var/lib/apt/lists/*
 
 ## Create new unprivileged user.
 ##  -u 1001             set the user id (UID) and group id (GID) of the new user
@@ -33,20 +44,23 @@ RUN apk add --no-cache dumb-init
 ##  app                 sets the username of the new user
 RUN adduser -u 1001 -h /app -s /usr/sbin/nologin -D app
 
-## Run the container as an unprivileged UID:GID
-USER 1001:1001
-
 # Copy application code from the repo into /app
 COPY . /app
 
-# Copy the application and its dependencies from the builder image.
-COPY --from=builder /build /app
+# Copy the dependencies from the builder image.
+COPY --from=builder /opt/venv /opt/venv
 
 # Set the working directory.
 WORKDIR /app
 
+# Run the container as an unprivileged UID:GID
+USER 1001:1001
+
+# Add the virtual environment to the PATH
+ENV PATH="/opt/venv/bin:$PATH"
+
 # Set the command that will be run when the container starts.
-CMD ["node", "/app/index.js"]
+CMD [ "python", "app.py" ]
 
 # Set dumb-init as entrypoint to make sure that it is the first
 # process started inside the container. The entrypoint command 
