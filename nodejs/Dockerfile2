@@ -1,0 +1,25 @@
+# Container image we use as starting point.
+FROM node:lts-alpine
+
+## Create new unprivileged user.
+##  -u 1001             set the user id (UID) and group id (GID) of the new user
+##  -h /app             sets home directory of the user
+##  -s /usr/bin/nologin sets the user shell
+##  -D                  do not set a password for the user
+##  app                 sets the username of the new user
+RUN adduser -u 1001 -h /app -s /usr/sbin/nologin -D app
+
+## Run the container as an unprivileged UID:GID
+USER 1001:1001
+
+# Copy all files from the repo into /app
+COPY . /app
+
+# Set the working directory.
+WORKDIR /app
+
+# Build the application.
+RUN npm install
+
+# Set the command that will be run when the container starts.
+CMD ["node", "/app/index.js"]

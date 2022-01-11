@@ -1,0 +1,52 @@
+# Container base image.
+FROM node:lts-alpine as base
+
+#######################################
+
+# Builder image, only used to build our application,
+# will not be part of the final image.
+FROM base as builder
+
+# Create a clean directory to build in.
+RUN mkdir /build
+
+# Copy all files from the repo into /build
+COPY . /build
+
+# Go into the /build directory and build the application.
+RUN cd /build && npm install
+
+#######################################
+
+# Application image that will be part of the final image.
+FROM base
+
+# Install dumb-init that we can use a minimal init system
+# that ensures that all signals are properly propagated.
+RUN apk add --no-cache dumb-init
+
+## Create new unprivileged user.
+##  -u 1001             set the user id (UID) and group id (GID) of the new user
+##  -h /app             sets home directory of the user
+##  -s /usr/bin/nologin sets the user shell
+##  -D                  do not set a password for the user
+##  app                 sets the username of the new user
+RUN adduser -u 1001 -h /app -s /usr/sbin/nologin -D app
+
+## Run the container as an unprivileged UID:GID
+USER 1001:1001
+
+# Copy the application and its dependencies from the builder image.
+COPY --from=builder /build /app
+
+# Set the working directory.
+WORKDIR /app
+
+# Set the command that will be run when the container starts.
+CMD ["node", "/app/index.js"]
+
+# Set dumb-init as entrypoint to make sure that it is the first
+# process started inside the container. The entrypoint command 
+# will invoke the command given in CMD which will start the 
+# actual application.
+ENTRYPOINT ["/usr/bin/dumb-init"]

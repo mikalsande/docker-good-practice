@@ -1,0 +1,14 @@
+# Container image we use as starting point.
+FROM node:lts-alpine
+
+# Copy all files from the repo into /root
+COPY . /root
+
+# Set the working directory.
+WORKDIR /root
+
+# Build the application.
+RUN npm install
+
+# Set the command that will be run when the container starts.
+CMD ["node", "/root/index.js"]
